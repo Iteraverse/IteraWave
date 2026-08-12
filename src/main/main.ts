@@ -217,9 +217,14 @@ function createWindow(): void {
                   r.focusLayout = false
                 }
               }
-              await win.webContents.executeJavaScript(
-                `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`,
-              )
+              // 退出验证：点击已消失的相邻封面位置（opacity≈0 不可点击 → hitTest null → 退出专注模式）
+              await win.webContents.executeJavaScript(`(() => {
+                const c = document.getElementById('viewport')
+                const opts = { bubbles: true, clientX: window.innerWidth / 2 + 260, clientY: window.innerHeight / 2, button: 0, pointerId: 2 }
+                c.dispatchEvent(new PointerEvent('pointerdown', opts))
+                c.dispatchEvent(new PointerEvent('pointerup', opts))
+                return true
+              })()`)
               await new Promise((res) => setTimeout(res, 700))
               const exited = await win.webContents.executeJavaScript(
                 '!document.body.classList.contains("focused")',

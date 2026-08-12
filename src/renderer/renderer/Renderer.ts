@@ -6,10 +6,10 @@ import { COVER_SHADER, AMBIENT_SHADER, UPSCALE_SHADER } from './shaders.js'
 
 const NEAR = 0.5
 const FAR = 5000
-/** 实例缓冲上限（同时可见封面；|offset|>7 不绘制） */
-const MAX_INSTANCES = 16
-/** 单个实例数据大小：mat4(64B) + layer(4B) + brightness(4B) + opacity(4B) + blur(4B) */
-const INSTANCE_STRIDE = 80
+/** 实例缓冲上限（同时可见封面 × 2：本体 + 模糊层；|offset|>7 不绘制） */
+const MAX_INSTANCES = 32
+/** 单个实例数据大小：mat4(64B) + layer(4B) + brightness(4B) + opacity(4B) + blur(4B) + isBlur(4B) */
+const INSTANCE_STRIDE = 84
 
 /**
  * WebGPU 渲染器（文档 §31/§36）：
@@ -170,6 +170,7 @@ export class Renderer {
               { shaderLocation: 7, offset: 68, format: 'float32' },
               { shaderLocation: 8, offset: 72, format: 'float32' },
               { shaderLocation: 9, offset: 76, format: 'float32' },
+              { shaderLocation: 10, offset: 80, format: 'float32' },
             ],
           },
         ],
@@ -264,13 +265,14 @@ export class Renderer {
     this.device.queue.writeBuffer(this.projUniform, 0, coverUniform)
   }
 
-  /** 写入单个实例数据（模型矩阵 T*R*S 列主序 + 图层 + 亮度/透明度 + 模糊） */
-  private writeInstance(off: number, it: CoverTransform, layer: number): void {
+  /** 写入单个实例数据（模型矩阵 T*R*S 列主序 + 图层 + 亮度/透明度 + 模糊；isBlur = 模糊层） */
+  private writeInstance(off: number, it: CoverTransform, layer: number, isBlur: boolean): void {
     const f32 = this.instanceF32
     const u32 = this.instanceU32
     const c = Math.cos(it.rotationY)
     const s = Math.sin(it.rotationY)
-    const ss = this.config.coverSize * it.scale
+    // 模糊层 quad 比本体大 blur × blurOverflow（边缘晕开）
+    const ss = this.config.coverSize * it.scale * (isBlur ? 1 + this.config.blurOverflow * it.blur : 1)
     f32[off + 0] = c * ss
     f32[off + 1] = 0
     f32[off + 2] = s * ss
@@ -291,23 +293,30 @@ export class Renderer {
     f32[off + 17] = it.brightness
     f32[off + 18] = it.opacity
     f32[off + 19] = it.blur
+    f32[off + 20] = isBlur ? 1 : 0
   }
 
   /** 渲染一帧：Ambient 背景（半分辨率 RT）→ Upscale（+Vignette）→ 封面流（文档 §36/§35） */
   render(items: readonly CoverTransform[], ambient: AmbientFrame): void {
-    const n = Math.min(items.length, MAX_INSTANCES)
-
-    // 填充实例数据（items 已按远→近排序）
+    // 每封面最多 2 实例：本体 + 模糊层（blur > 0 时）；items 已按远→近排序
+    let total = 0
+    const n = Math.min(items.length, Math.floor(MAX_INSTANCES / 2))
     for (let i = 0; i < n; i++) {
       const it = items[i]
       const tier = AlbumTextureCache.tierForDistance(Math.abs(it.offset))
       const layer = AlbumTextureCache.layerFor(it.albumIndex, tier)
-      this.writeInstance(i * (INSTANCE_STRIDE / 4), it, layer)
+      const off = total * (INSTANCE_STRIDE / 4)
+      this.writeInstance(off, it, layer, false)
+      total++
+      if (it.blur > 0.01 && it.opacity > 0.001) {
+        this.writeInstance(off + INSTANCE_STRIDE / 4, it, layer, true)
+        total++
+      }
     }
 
     const instanceBuffer = this.instanceBuffers[this.instanceRing]
     this.instanceRing ^= 1
-    this.device.queue.writeBuffer(instanceBuffer, 0, this.instanceData, 0, n * INSTANCE_STRIDE)
+    this.device.queue.writeBuffer(instanceBuffer, 0, this.instanceData, 0, total * INSTANCE_STRIDE)
 
     // Ambient blob uniform（§8：位置/半径/强度/颜色每帧由 CPU 更新）
     const au = new Float32Array(76)
@@ -348,8 +357,8 @@ export class Renderer {
       }
     }
 
-    // Pass 3: 封面流
-    if (n > 0) {
+    // Pass 3: 封面流（本体 + 模糊层）
+    if (total > 0) {
       const pass = encoder.beginRenderPass({
         colorAttachments: [{ view, loadOp: 'load', storeOp: 'store' }],
       })
@@ -358,7 +367,7 @@ export class Renderer {
       pass.setVertexBuffer(0, this.quadVB)
       pass.setVertexBuffer(1, instanceBuffer)
       pass.setIndexBuffer(this.indexBuffer, 'uint16')
-      pass.drawIndexed(6, n)
+      pass.drawIndexed(6, total)
       pass.end()
     }
 

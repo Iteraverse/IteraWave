@@ -51,10 +51,12 @@ export interface VisualConfig {
   focusBackScale: number
   /** 其他封面变暗系数 */
   focusBackDim: number
-  /** 其他封面淡出后的透明度系数（× normal opacity） */
+  /** 其他封面淡出后的透明度系数（× normal opacity；0 = 完全消失） */
   focusFadeOut: number
   /** 其他封面淡出时的高斯模糊强度（0..1，shader 3×3 高斯核） */
   focusBlur: number
+  /** 模糊层溢出比例：模糊层 quad 比本体大 blur × 该值（边缘晕开） */
+  blurOverflow: number
   /** 专注过渡速度（指数趋近系数，越大越快） */
   focusTransitionSpeed: number
 
@@ -118,8 +120,9 @@ export const visualConfig: VisualConfig = {
   focusDepth: 320,
   focusBackScale: 0.9,
   focusBackDim: 0.6,
-  focusFadeOut: 0.03,
+  focusFadeOut: 0,
   focusBlur: 1,
+  blurOverflow: 0.06,
   focusTransitionSpeed: 3.8,
 
   // Ambient 背景（GPU 色彩场，§4-§9/§38/§40）

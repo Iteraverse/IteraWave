@@ -30,6 +30,7 @@ struct VSIn {
   @location(7) brightness : f32,
   @location(8) opacity : f32,
   @location(9) blur : f32,
+  @location(10) isBlur : f32,
 };
 
 struct VSOut {
@@ -37,8 +38,9 @@ struct VSOut {
   @location(0) uv : vec2f,
   @location(1) @interpolate(flat) layer : u32,
   @location(2) mul : vec4f,
-  // flat：blur 是 per-instance 常量，保持 uniform 控制流（if 分支内才能 textureSample）
+  // flat：blur/isBlur 是 per-instance 常量，保持 uniform 控制流（if 分支内才能 textureSample）
   @location(3) @interpolate(flat) blur : f32,
+  @location(4) @interpolate(flat) isBlur : f32,
 };
 
 @vertex
@@ -50,6 +52,7 @@ fn vs(in : VSIn) -> VSOut {
   out.layer = in.layer;
   out.mul = vec4f(in.brightness, in.brightness, in.brightness, in.opacity);
   out.blur = in.blur;
+  out.isBlur = in.isBlur;
   return out;
 }
 
@@ -121,8 +124,12 @@ fn fs(in : VSOut) -> @location(0) vec4f {
   let c = sampleCoverBlurred(in.uv, albumLayer, tier, in.blur);
   var rgb = c.rgb * in.mul.rgb;
   var alpha = c.a * in.mul.a;
-  // 圆角裁剪（抗锯齿），透明处露出 Ambient 背景
-  alpha *= roundedRectAlpha(in.uv, cu.cornerRadius);
+  // 本体：圆角裁剪；模糊层：不裁圆角，改为径向羽化（中心实、边缘晕开）
+  // select 无分支：fragment 属性无法推导 uniform 控制流
+  let corner = roundedRectAlpha(in.uv, cu.cornerRadius);
+  let d = distance(in.uv, vec2f(0.5)) * 2.0;
+  let radial = 1.0 - smoothstep(0.5, 1.0, d);
+  alpha *= select(corner, radial, in.isBlur > 0.5);
   return vec4f(linToSrgb(rgb), alpha);
 }
 `
