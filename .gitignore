@@ -1,0 +1,14 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 本地封面图片（个人图片，不随仓库分发；清空 covers/ 后应用回退内置演示专辑）
+covers/
+
+# Reasonix 会话/任务日志（本机数据）
+.reasonix/
+
+# 杂项
+*.log
+.DS_Store
+Thumbs.db

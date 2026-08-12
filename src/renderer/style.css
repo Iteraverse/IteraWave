@@ -1,0 +1,187 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0b0e;
+}
+
+#viewport {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  cursor: grab;
+}
+
+#viewport.dragging {
+  cursor: grabbing;
+}
+
+#error {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: #c9ccd4;
+  font: 14px/1.6 system-ui, sans-serif;
+  text-align: center;
+  background: #0a0b0e;
+  white-space: pre-wrap;
+}
+
+#error[hidden] {
+  display: none;
+}
+
+/* ---- UI 层（§27/§28：极简、小字号、高字距、中低亮度、无卡片无圆角） ---- */
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#metadata {
+  position: absolute;
+  left: 50%;
+  bottom: 11%;
+  transform: translateX(-50%);
+  text-align: center;
+  color: rgba(240, 242, 245, 0.78);
+  user-select: none;
+  transition: opacity 0.8s;
+}
+
+#metadata[hidden] {
+  display: block;
+  opacity: 0;
+}
+
+#meta-title {
+  font: 500 20px/1.3 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#meta-artist {
+  margin-top: 8px;
+  font: 400 12px/1.5 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+#meta-year {
+  margin-top: 5px;
+  font: 400 11px/1.5 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.4em;
+  opacity: 0.5;
+}
+
+#controls {
+  position: absolute;
+  left: 50%;
+  bottom: 2.5%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: auto;
+}
+
+#controls.visible {
+  opacity: 1;
+}
+
+#controls[hidden] {
+  display: flex;
+  opacity: 0;
+}
+
+#btn-play {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  color: rgba(240, 242, 245, 0.85);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#btn-play:hover {
+  color: #fff;
+}
+
+#progress {
+  width: 280px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+#play-state {
+  min-width: 72px;
+  font: 400 10px/1 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.3em;
+  color: rgba(240, 242, 245, 0.45);
+}
+
+#debug {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  width: 230px;
+  padding: 10px 12px;
+  font: 11px/1.8 ui-monospace, Consolas, monospace;
+  color: rgba(200, 205, 215, 0.88);
+  background: rgba(9, 11, 15, 0.78);
+  pointer-events: auto;
+  user-select: none;
+}
+
+#debug-stats {
+  white-space: pre;
+}
+
+#debug-palette {
+  display: flex;
+  gap: 5px;
+  margin: 8px 0;
+}
+
+#debug-palette .swatch {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+#debug .slider-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+#debug .slider-row label {
+  width: 118px;
+  flex: none;
+  color: rgba(200, 205, 215, 0.7);
+}
+
+#debug input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: #9aa4b2;
+}

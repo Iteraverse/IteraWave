@@ -1,0 +1,19 @@
+{
+  "name": "album-flow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GPU-accelerated cinematic Cover Flow album browser for Windows (Phase 1: 3D Cover Flow + interaction + spring physics)",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && node scripts/copy-static.mjs",
+    "start": "npm run build && electron .",
+    "smoke": "npm run build && electron . --smoke",
+    "verify": "node scripts/verify-physics.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "electron": "^43.3.0",
+    "typescript": "^7.0.2"
+  }
+}

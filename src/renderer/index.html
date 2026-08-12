@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' file:" />
+  <title>Album Flow</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="viewport"></canvas>
+  <div id="error" hidden></div>
+
+  <div id="ui">
+    <div id="metadata" hidden>
+      <div id="meta-title"></div>
+      <div id="meta-artist"></div>
+      <div id="meta-year"></div>
+    </div>
+    <div id="controls" hidden>
+      <button id="btn-play" title="播放/暂停 (Space)">&#9654;</button>
+      <div id="progress"><div id="progress-bar"></div></div>
+      <span id="play-state"></span>
+    </div>
+    <div id="debug" hidden>
+      <div id="debug-stats"></div>
+      <div id="debug-palette"></div>
+      <div id="debug-sliders"></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
