@@ -118,7 +118,7 @@ export const visualConfig: VisualConfig = {
   focusDepth: 320,
   focusBackScale: 0.9,
   focusBackDim: 0.6,
-  focusFadeOut: 0.12,
+  focusFadeOut: 0.03,
   focusBlur: 1,
   focusTransitionSpeed: 3.8,
 

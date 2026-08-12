@@ -70,7 +70,8 @@ fn sampleCover(uv : vec2f, albumLayer : u32, tier : u32) -> vec4f {
 // 不能写 if (blur <= 0.001) + return sampleCover(...)：fragment 属性无法推导 uniform
 // 控制流，分支内的 textureSample 会被 Tint 拒绝。
 fn sampleCoverBlurred(uv : vec2f, albumLayer : u32, tier : u32, blur : f32) -> vec4f {
-  let s = blur * 0.012;
+  // 步长 0.045 uv ≈ 23px（full 纹理）/ 6 纹素（thumb）：视觉可见的强模糊
+  let s = blur * 0.045;
   // 3x3 高斯核 [1,2,1; 2,4,2; 1,2,1] / 16
   var acc = vec3f(0.0);
   var accA = 0.0;

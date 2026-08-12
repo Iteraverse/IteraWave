@@ -129,7 +129,8 @@ function lerpTransform(a: CoverTransform, b: CoverTransform, k: number): CoverTr
     scale: a.scale + (b.scale - a.scale) * k,
     brightness: a.brightness + (b.brightness - a.brightness) * k,
     opacity: a.opacity + (b.opacity - a.opacity) * k,
-    blur: a.blur + (b.blur - a.blur) * k,
+    // 模糊曲线提前（easeOut）：过渡中先看到"变糊"，随后才淡出消失
+    blur: a.blur + (b.blur - a.blur) * easeOutCubic(k),
   }
 }
 
