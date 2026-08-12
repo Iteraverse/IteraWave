@@ -129,8 +129,9 @@ function lerpTransform(a: CoverTransform, b: CoverTransform, k: number): CoverTr
     scale: a.scale + (b.scale - a.scale) * k,
     brightness: a.brightness + (b.brightness - a.brightness) * k,
     opacity: a.opacity + (b.opacity - a.opacity) * k,
-    // 模糊曲线提前（easeOut）：过渡中先看到"变糊"，随后才淡出消失
-    blur: a.blur + (b.blur - a.blur) * easeOutCubic(k),
+    // blur 与 opacity 同步线性渐变：进入时模糊逐渐增大（配合淡出），
+    // 退出时模糊逐渐减小（配合渐显）——两个方向完全对称
+    blur: a.blur + (b.blur - a.blur) * k,
   }
 }
 
