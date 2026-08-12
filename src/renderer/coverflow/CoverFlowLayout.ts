@@ -13,6 +13,8 @@ export interface CoverTransform {
   scale: number
   brightness: number
   opacity: number
+  /** 高斯模糊强度（0..1，专注模式淡出时生效，shader 3×3 核） */
+  blur: number
 }
 
 /** 专注模式布局状态：聚焦索引 + 过渡进度（0..1） */
@@ -68,6 +70,7 @@ export class CoverFlowLayout {
         scale,
         brightness,
         opacity,
+        blur: 0,
       }
       let t = normal
       if (focus && focus.t > 0.002) {
@@ -86,8 +89,7 @@ export class CoverFlowLayout {
 
   /**
    * 专注模式目标布局：主封面放大左移正对；
-   * 其他封面收拢到主封面背后——x 靠向主封面（带方向偏移形成叠层）、z 分层加深、
-   * 尺寸按 focusBackScale 缩小、明暗递减。
+   * 其他封面向后移动 + 淡出 + 高斯模糊（不改变横向位置，像退入背景）。
    */
   private focusTransform(n: CoverTransform, focusIndex: number): CoverTransform {
     const cfg = this.config
@@ -102,19 +104,16 @@ export class CoverFlowLayout {
         scale: cfg.focusScale,
         brightness: 1,
         opacity: 1,
+        blur: 0,
       }
     }
-    const d = Math.max(1, Math.abs(n.offset))
-    const dir = Math.sign(n.offset) || 1
     return {
       ...n,
-      x: focusX + dir * Math.min(d, 4) * cfg.focusGather * cfg.coverSize,
-      y: 0,
-      z: -cfg.focusDepth - Math.min(d, 4) * 45,
-      rotationY: 0,
-      scale: cfg.focusScale * cfg.focusBackScale * (1 - Math.min(d, 4) * 0.04),
+      z: n.z - cfg.focusDepth,
+      scale: n.scale * cfg.focusBackScale,
       brightness: n.brightness * cfg.focusBackDim,
-      opacity: n.opacity * cfg.focusBackDim,
+      opacity: n.opacity * cfg.focusFadeOut,
+      blur: cfg.focusBlur,
     }
   }
 }
@@ -130,6 +129,7 @@ function lerpTransform(a: CoverTransform, b: CoverTransform, k: number): CoverTr
     scale: a.scale + (b.scale - a.scale) * k,
     brightness: a.brightness + (b.brightness - a.brightness) * k,
     opacity: a.opacity + (b.opacity - a.opacity) * k,
+    blur: a.blur + (b.blur - a.blur) * k,
   }
 }
 

@@ -8,8 +8,8 @@ const NEAR = 0.5
 const FAR = 5000
 /** 实例缓冲上限（同时可见封面；|offset|>7 不绘制） */
 const MAX_INSTANCES = 16
-/** 单个实例数据大小：mat4(64B) + layer(4B) + brightness(4B) + opacity(4B) */
-const INSTANCE_STRIDE = 76
+/** 单个实例数据大小：mat4(64B) + layer(4B) + brightness(4B) + opacity(4B) + blur(4B) */
+const INSTANCE_STRIDE = 80
 
 /**
  * WebGPU 渲染器（文档 §31/§36）：
@@ -169,6 +169,7 @@ export class Renderer {
               { shaderLocation: 6, offset: 64, format: 'uint32' },
               { shaderLocation: 7, offset: 68, format: 'float32' },
               { shaderLocation: 8, offset: 72, format: 'float32' },
+              { shaderLocation: 9, offset: 76, format: 'float32' },
             ],
           },
         ],
@@ -263,7 +264,7 @@ export class Renderer {
     this.device.queue.writeBuffer(this.projUniform, 0, coverUniform)
   }
 
-  /** 写入单个实例数据（模型矩阵 T*R*S 列主序 + 图层 + 亮度/透明度） */
+  /** 写入单个实例数据（模型矩阵 T*R*S 列主序 + 图层 + 亮度/透明度 + 模糊） */
   private writeInstance(off: number, it: CoverTransform, layer: number): void {
     const f32 = this.instanceF32
     const u32 = this.instanceU32
@@ -289,6 +290,7 @@ export class Renderer {
     u32[off + 16] = layer
     f32[off + 17] = it.brightness
     f32[off + 18] = it.opacity
+    f32[off + 19] = it.blur
   }
 
   /** 渲染一帧：Ambient 背景（半分辨率 RT）→ Upscale（+Vignette）→ 封面流（文档 §36/§35） */

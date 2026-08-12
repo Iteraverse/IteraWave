@@ -189,15 +189,30 @@ function createWindow(): void {
                     if (idx === null) return null
                     const it = s.items.find((i) => i.albumIndex === idx)
                     if (!it) return null
-                    return { x: it.x, scale: it.scale, z: it.z, rot: it.rotationY, t: s.focusT }
-                  })()`)) as { x: number; scale: number; z: number; rot: number; t: number } | null
+                    const back = s.items.find((i) => i.albumIndex !== idx && Math.abs(i.offset) < 2)
+                    return {
+                      x: it.x, scale: it.scale, z: it.z, rot: it.rotationY, t: s.focusT,
+                      backBlur: back ? back.blur : -1, backOpacity: back ? back.opacity : -1,
+                    }
+                  })()`)) as {
+                    x: number
+                    scale: number
+                    z: number
+                    rot: number
+                    t: number
+                    backBlur: number
+                    backOpacity: number
+                  } | null
                   console.log(`[SMOKE] focus layout: ${JSON.stringify(info)}`)
                   r.focusLayout =
                     info !== null &&
                     Math.abs(info.x + 228) < 40 &&
                     Math.abs(info.scale - 1.32) < 0.05 &&
                     Math.abs(info.z) < 40 &&
-                    Math.abs(info.rot) < 0.05
+                    Math.abs(info.rot) < 0.05 &&
+                    // 其他封面：淡出（opacity 低）+ 高斯模糊（blur 高）
+                    info.backBlur > 0.8 &&
+                    info.backOpacity < 0.2
                 } catch {
                   r.focusLayout = false
                 }

@@ -29,6 +29,7 @@ struct VSIn {
   @location(6) layer : u32,
   @location(7) brightness : f32,
   @location(8) opacity : f32,
+  @location(9) blur : f32,
 };
 
 struct VSOut {
@@ -36,6 +37,8 @@ struct VSOut {
   @location(0) uv : vec2f,
   @location(1) @interpolate(flat) layer : u32,
   @location(2) mul : vec4f,
+  // flat：blur 是 per-instance 常量，保持 uniform 控制流（if 分支内才能 textureSample）
+  @location(3) @interpolate(flat) blur : f32,
 };
 
 @vertex
@@ -46,6 +49,7 @@ fn vs(in : VSIn) -> VSOut {
   out.uv = in.uv;
   out.layer = in.layer;
   out.mul = vec4f(in.brightness, in.brightness, in.brightness, in.opacity);
+  out.blur = in.blur;
   return out;
 }
 
@@ -61,6 +65,45 @@ fn sampleCover(uv : vec2f, albumLayer : u32, tier : u32) -> vec4f {
   return select(select(cMed, cThumb, tier == 2u), cFull, tier == 0u);
 }
 
+// 3x3 高斯模糊采样（blur 0..1；步长按低档纹理纹素，淡出封面自然更糊）。
+// 无分支实现：blur=0 时步长为 0（9 次同点采样 = 无模糊）。
+// 不能写 if (blur <= 0.001) + return sampleCover(...)：fragment 属性无法推导 uniform
+// 控制流，分支内的 textureSample 会被 Tint 拒绝。
+fn sampleCoverBlurred(uv : vec2f, albumLayer : u32, tier : u32, blur : f32) -> vec4f {
+  let s = blur * 0.012;
+  // 3x3 高斯核 [1,2,1; 2,4,2; 1,2,1] / 16
+  var acc = vec3f(0.0);
+  var accA = 0.0;
+  let c00 = sampleCover(uv + vec2f(-s, -s), albumLayer, tier);
+  acc += c00.rgb * 0.0625;
+  accA += c00.a * 0.0625;
+  let c01 = sampleCover(uv + vec2f(0.0, -s), albumLayer, tier);
+  acc += c01.rgb * 0.125;
+  accA += c01.a * 0.125;
+  let c02 = sampleCover(uv + vec2f(s, -s), albumLayer, tier);
+  acc += c02.rgb * 0.0625;
+  accA += c02.a * 0.0625;
+  let c10 = sampleCover(uv + vec2f(-s, 0.0), albumLayer, tier);
+  acc += c10.rgb * 0.125;
+  accA += c10.a * 0.125;
+  let c11 = sampleCover(uv, albumLayer, tier);
+  acc += c11.rgb * 0.25;
+  accA += c11.a * 0.25;
+  let c12 = sampleCover(uv + vec2f(s, 0.0), albumLayer, tier);
+  acc += c12.rgb * 0.125;
+  accA += c12.a * 0.125;
+  let c20 = sampleCover(uv + vec2f(-s, s), albumLayer, tier);
+  acc += c20.rgb * 0.0625;
+  accA += c20.a * 0.0625;
+  let c21 = sampleCover(uv + vec2f(0.0, s), albumLayer, tier);
+  acc += c21.rgb * 0.125;
+  accA += c21.a * 0.125;
+  let c22 = sampleCover(uv + vec2f(s, s), albumLayer, tier);
+  acc += c22.rgb * 0.0625;
+  accA += c22.a * 0.0625;
+  return vec4f(acc, accA);
+}
+
 // 圆角矩形 SDF：uv ∈ [0,1]²，r = 圆角半径（uv 单位）
 fn roundedRectAlpha(uv : vec2f, r : f32) -> f32 {
   let b = vec2f(0.5 - r);
@@ -74,7 +117,7 @@ fn roundedRectAlpha(uv : vec2f, r : f32) -> f32 {
 fn fs(in : VSOut) -> @location(0) vec4f {
   let albumLayer = in.layer / 3u;
   var tier = in.layer % 3u;
-  let c = sampleCover(in.uv, albumLayer, tier);
+  let c = sampleCoverBlurred(in.uv, albumLayer, tier, in.blur);
   var rgb = c.rgb * in.mul.rgb;
   var alpha = c.a * in.mul.a;
   // 圆角裁剪（抗锯齿），透明处露出 Ambient 背景
