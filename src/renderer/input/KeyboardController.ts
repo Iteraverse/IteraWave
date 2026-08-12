@@ -6,9 +6,10 @@ export interface KeyboardCallbacks {
   onPlayPause(): void
   onFullscreen(): void
   onDebug(): void
+  onExit(): void
 }
 
-/** 键盘导航：← → 切换专辑；Home / End 跳转首尾。按住时节流连续翻页。 */
+/** 键盘导航：← → 切换专辑；Home / End 跳转首尾；Esc 退出专注模式。按住时节流连续翻页。 */
 export class KeyboardController {
   callbacks: KeyboardCallbacks = {
     onLeft: () => {},
@@ -18,6 +19,7 @@ export class KeyboardController {
     onPlayPause: () => {},
     onFullscreen: () => {},
     onDebug: () => {},
+    onExit: () => {},
   }
 
   private lastAction = 0
@@ -59,6 +61,9 @@ export class KeyboardController {
       case 'F12':
         e.preventDefault()
         this.callbacks.onDebug()
+        break
+      case 'Escape':
+        this.callbacks.onExit()
         break
       default:
         return

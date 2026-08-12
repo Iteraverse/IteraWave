@@ -20,6 +20,8 @@ interface SmokeResult {
   centerRatio?: number
   cornerCheck?: boolean
   cornersMin?: number
+  focusCheck?: boolean
+  focusLayout?: boolean
 }
 
 function createWindow(): void {
@@ -163,8 +165,63 @@ function createWindow(): void {
               r.centerRatio = -1
             }
             console.log('[SMOKE] ' + JSON.stringify(r))
-            // 画面有内容 + 中央封面区域渲染到位 + 圆角裁剪生效
-            app.exit(r.ok && (r.litRatio ?? 0) > 0.1 && (r.centerRatio ?? 0) > 0.05 && r.cornerCheck !== false ? 0 : 1)
+            // 专注模式检查：模拟点击中心封面 → 进入专注模式；Esc → 退出
+            void (async () => {
+              const js = `(() => {
+                const c = document.getElementById('viewport')
+                const w = window.innerWidth, h = window.innerHeight
+                const opts = { bubbles: true, clientX: w / 2, clientY: h / 2, button: 0, pointerId: 1 }
+                c.dispatchEvent(new PointerEvent('pointerdown', opts))
+                c.dispatchEvent(new PointerEvent('pointerup', opts))
+                return true
+              })()`
+              await win.webContents.executeJavaScript(js)
+              await new Promise((res) => setTimeout(res, 900))
+              const focused = await win.webContents.executeJavaScript(
+                'document.body.classList.contains("focused")',
+              )
+              // 专注模式布局验证：主封面应放大（1.32）、左移（x≈-152）、转正、z≈0
+              if (focused) {
+                try {
+                  const info = (await win.webContents.executeJavaScript(`(() => {
+                    const s = window.__scene
+                    const idx = s.focusedIndex
+                    if (idx === null) return null
+                    const it = s.items.find((i) => i.albumIndex === idx)
+                    if (!it) return null
+                    return { x: it.x, scale: it.scale, z: it.z, rot: it.rotationY, t: s.focusT }
+                  })()`)) as { x: number; scale: number; z: number; rot: number; t: number } | null
+                  console.log(`[SMOKE] focus layout: ${JSON.stringify(info)}`)
+                  r.focusLayout =
+                    info !== null &&
+                    Math.abs(info.x + 152) < 40 &&
+                    Math.abs(info.scale - 1.32) < 0.05 &&
+                    Math.abs(info.z) < 40 &&
+                    Math.abs(info.rot) < 0.05
+                } catch {
+                  r.focusLayout = false
+                }
+              }
+              await win.webContents.executeJavaScript(
+                `window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`,
+              )
+              await new Promise((res) => setTimeout(res, 700))
+              const exited = await win.webContents.executeJavaScript(
+                '!document.body.classList.contains("focused")',
+              )
+              console.log(`[SMOKE] focus mode: enter=${focused} exit=${exited}`)
+              r.focusCheck = focused && exited
+              app.exit(
+                r.ok &&
+                  (r.litRatio ?? 0) > 0.1 &&
+                  (r.centerRatio ?? 0) > 0.05 &&
+                  r.cornerCheck !== false &&
+                  r.focusCheck !== false &&
+                  r.focusLayout !== false
+                  ? 0
+                  : 1,
+              )
+            })()
             return
           }
         } catch (e) {

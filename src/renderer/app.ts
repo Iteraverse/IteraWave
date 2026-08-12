@@ -9,6 +9,7 @@ import { MouseController } from './input/MouseController.js'
 import { WheelController } from './input/WheelController.js'
 import { Renderer } from './renderer/Renderer.js'
 import { AlbumInfo } from './ui/AlbumInfo.js'
+import { LyricsPanel } from './ui/LyricsPanel.js'
 import { PlaybackControls } from './ui/PlaybackControls.js'
 import { DebugPanel } from './ui/DebugPanel.js'
 
@@ -26,6 +27,7 @@ interface SmokeResult {
 const isSmoke = new URLSearchParams(location.search).get('smoke') === '1'
 /** smoke 模式渲染帧数（约 0.5~1 秒） */
 const SMOKE_FRAMES = 30
+let smokeReported = false
 
 async function run(): Promise<SmokeResult> {
   const canvas = document.getElementById('viewport') as HTMLCanvasElement
@@ -91,6 +93,25 @@ async function run(): Promise<SmokeResult> {
     visualConfig,
   )
 
+  // 右侧歌词占位面板（专注模式显示，§27 扩展）
+  const lyricsPanel = new LyricsPanel(
+    document.getElementById('lyrics') as HTMLDivElement,
+    document.getElementById('lyrics-title') as HTMLDivElement,
+    document.getElementById('lyrics-artist') as HTMLDivElement,
+  )
+  // 专注模式：body.focused 驱动 CSS（歌词滑入 / 进度条弹出 / 元数据隐藏）
+  scene.onFocusChange = (index) => {
+    document.body.classList.toggle('focused', index !== null)
+    lyricsPanel.setAlbum(index !== null ? albums[index] : null)
+    if (index !== null) {
+      controlsEl.hidden = false
+      controlsEl.classList.add('visible')
+    } else if (!document.fullscreenElement) {
+      controlsEl.classList.remove('visible')
+      controlsEl.hidden = true
+    }
+  }
+
   // 全屏时 UI 自动隐藏；鼠标移到底部显示播放控件（§29）
   let hideControlsTimer = 0
   const showControls = (): void => {
@@ -105,8 +126,12 @@ async function run(): Promise<SmokeResult> {
   })
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement) {
-      controlsEl.classList.remove('visible')
-      controlsEl.hidden = true
+      // 非专注模式才隐藏播放控件（专注模式进度条常驻）
+      if (scene.focusedIndex === null) {
+        controlsEl.classList.remove('visible')
+        controlsEl.hidden = true
+      }
+      metadataEl.hidden = true
     } else {
       controlsEl.hidden = false
       metadataEl.hidden = false
@@ -136,6 +161,8 @@ async function run(): Promise<SmokeResult> {
   // smoke 模式下输出 palette 验证 Phase 3 分析结果
   if (isSmoke) {
     console.log('[SMOKE] palette0: ' + JSON.stringify(albums[0].palette))
+    // 暴露场景供主进程验证专注模式布局
+    ;(window as unknown as { __scene: CoverFlowScene }).__scene = scene
   }
 
   return await new Promise<SmokeResult>((resolve) => {
@@ -177,7 +204,9 @@ async function run(): Promise<SmokeResult> {
       frames++
       fpsSum += dt > 0 ? 1 / dt : 0
 
-      if (isSmoke && frames >= SMOKE_FRAMES) {
+      // smoke：记录结果后继续渲染（主进程的 focus 检查需要动画持续运行）
+      if (isSmoke && frames >= SMOKE_FRAMES && !smokeReported) {
+        smokeReported = true
         const info = adapter.info
         resolve({
           ok: true,
@@ -186,7 +215,6 @@ async function run(): Promise<SmokeResult> {
           frames,
           position: scene.position,
         })
-        return
       }
       requestAnimationFrame(frame)
     }

@@ -42,6 +42,9 @@ export class Renderer {
   private instanceF32 = new Float32Array(this.instanceData)
   private instanceU32 = new Uint32Array(this.instanceData)
 
+  /** 最近一次 setSize 的透视投影矩阵（列主序，供 hitTest 使用） */
+  private projView = new Float32Array(16)
+
   constructor(private readonly config: VisualConfig) {}
 
   async init(
@@ -252,6 +255,7 @@ export class Renderer {
     projView[11] = -1
     projView[14] = (FAR * (NEAR - persp)) / (NEAR - FAR)
     projView[15] = persp
+    this.projView = projView
     // 封面 uniform：proj + 圆角半径（§45 集中管理）
     const coverUniform = new Float32Array(24)
     coverUniform.set(projView)
@@ -357,6 +361,64 @@ export class Renderer {
     }
 
     this.device.queue.submit([encoder.finish()])
+  }
+
+  /**
+   * 3D 拾取：把 CSS 坐标投影回场景，返回命中的封面 albumIndex（最近者优先）。
+   * 每个封面用模型矩阵变换 4 角到 NDC，做点-in-convex-quad 测试（旋转封面也能命中）。
+   */
+  hitTest(
+    items: readonly CoverTransform[],
+    cssX: number,
+    cssY: number,
+    cssW: number,
+    cssH: number,
+  ): number | null {
+    const nx = (cssX / Math.max(1, cssW)) * 2 - 1
+    const ny = 1 - (cssY / Math.max(1, cssH)) * 2
+    // items 按远→近排序：从近到远遍历，第一个命中即最近封面
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i]
+      if (it.opacity < 0.05) continue
+      // 封面 4 角 → NDC
+      const pts: Array<[number, number]> = []
+      for (const [lx, ly] of [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]) {
+        const p = this.projectToNdc(it, lx, ly)
+        pts.push(p)
+      }
+      // 点-in-convex-quad：每条边叉积符号一致
+      let sign = 0
+      let inside = true
+      for (let e = 0; e < 4; e++) {
+        const a = pts[e]
+        const b = pts[(e + 1) % 4]
+        const cross = (b[0] - a[0]) * (ny - a[1]) - (b[1] - a[1]) * (nx - a[0])
+        const s = cross > 0 ? 1 : cross < 0 ? -1 : 0
+        if (s === 0) continue
+        if (sign === 0) sign = s
+        else if (s !== sign) {
+          inside = false
+          break
+        }
+      }
+      if (inside) return it.albumIndex
+    }
+    return null
+  }
+
+  /** 封面局部坐标 → NDC（模型矩阵与 writeInstance 完全一致） */
+  private projectToNdc(it: CoverTransform, lx: number, ly: number): [number, number] {
+    const c = Math.cos(it.rotationY)
+    const s = Math.sin(it.rotationY)
+    const ss = this.config.coverSize * it.scale
+    const wx = c * ss * lx + it.x
+    const wy = ss * ly + it.y
+    const wz = s * ss * lx + it.z
+    const pv = this.projView
+    const x = pv[0] * wx + pv[4] * wy + pv[8] * wz + pv[12]
+    const y = pv[1] * wx + pv[5] * wy + pv[9] * wz + pv[13]
+    const w = pv[3] * wx + pv[7] * wy + pv[11] * wz + pv[15]
+    return [x / w, y / w]
   }
 }
 

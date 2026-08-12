@@ -15,6 +15,12 @@ export interface CoverTransform {
   opacity: number
 }
 
+/** 专注模式布局状态：聚焦索引 + 过渡进度（0..1） */
+export interface FocusState {
+  index: number
+  t: number
+}
+
 /**
  * Cover Flow 空间布局数学（文档 §13-14, §18）：
  * x = offset * spacing
@@ -23,6 +29,8 @@ export interface CoverTransform {
  * opacity = 1 - smoothstep(0.5, 6, d) * 0.65
  * brightness = 1 - smoothstep(0.2, 3, d) * 0.4
  * rotationY = -sign(offset) * easeOutCubic(min(|offset|,1)) * maxAngle
+ *
+ * 专注模式（focus）：主封面放大左移、其他封面退后变暗，normal ↔ focused 插值过渡。
  */
 export class CoverFlowLayout {
   /** 可见范围：|offset| 超过此值的封面不绘制（opacity < 0.35） */
@@ -30,7 +38,7 @@ export class CoverFlowLayout {
 
   constructor(private readonly config: VisualConfig) {}
 
-  compute(position: number, count: number): CoverTransform[] {
+  compute(position: number, count: number, focus: FocusState | null = null): CoverTransform[] {
     const cfg = this.config
     const center = Math.round(position)
     const start = Math.max(0, center - CoverFlowLayout.VISIBLE_RADIUS)
@@ -50,7 +58,7 @@ export class CoverFlowLayout {
       const rotT = easeOutCubic(Math.min(Math.abs(offset), 1))
       // 角度随距离渐进（Apple 风格）：offset=1 → maxAngle，offset≥3 → 接近侧立
       const angleDeg = cfg.coverMaxAngle + (cfg.coverFarAngle - cfg.coverMaxAngle) * smoothstep(1, 3, d)
-      out.push({
+      const normal: CoverTransform = {
         albumIndex: i,
         offset,
         x: offset * cfg.coverSpacing,
@@ -60,11 +68,55 @@ export class CoverFlowLayout {
         scale,
         brightness,
         opacity,
-      })
+      }
+      let t = normal
+      if (focus && focus.t > 0.002) {
+        const k = easeInOutCubic(focus.t)
+        t = lerpTransform(normal, this.focusTransform(normal, focus.index), k)
+      }
+      out.push(t)
     }
     // 渲染顺序：远 → 近（后画的近封面正确遮挡远处的）
     out.sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
     return out
+  }
+
+  /** 专注模式目标布局：主封面放大左移正对；其他封面退后缩小变暗 */
+  private focusTransform(n: CoverTransform, focusIndex: number): CoverTransform {
+    const cfg = this.config
+    if (n.albumIndex === focusIndex) {
+      return {
+        ...n,
+        x: -cfg.focusOffsetX * cfg.coverSize,
+        y: 0,
+        z: 0,
+        rotationY: 0,
+        scale: cfg.focusScale,
+        brightness: 1,
+        opacity: 1,
+      }
+    }
+    return {
+      ...n,
+      z: n.z - cfg.focusDepth,
+      scale: n.scale * cfg.focusBackScale,
+      brightness: n.brightness * cfg.focusBackDim,
+      opacity: n.opacity * cfg.focusBackDim,
+    }
+  }
+}
+
+function lerpTransform(a: CoverTransform, b: CoverTransform, k: number): CoverTransform {
+  return {
+    albumIndex: a.albumIndex,
+    offset: a.offset,
+    x: a.x + (b.x - a.x) * k,
+    y: a.y + (b.y - a.y) * k,
+    z: a.z + (b.z - a.z) * k,
+    rotationY: a.rotationY + (b.rotationY - a.rotationY) * k,
+    scale: a.scale + (b.scale - a.scale) * k,
+    brightness: a.brightness + (b.brightness - a.brightness) * k,
+    opacity: a.opacity + (b.opacity - a.opacity) * k,
   }
 }
 
@@ -75,6 +127,10 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 
 function easeOutCubic(t: number): number {
   return 1 - Math.pow(1 - t, 3)
+}
+
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
 
 function clamp01(v: number): number {

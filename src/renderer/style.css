@@ -61,6 +61,11 @@ body {
   opacity: 0;
 }
 
+/* 专注模式：元数据隐藏（歌词面板承载标题信息） */
+body.focused #metadata {
+  opacity: 0;
+}
+
 #meta-title {
   font: 500 20px/1.3 "Segoe UI", system-ui, sans-serif;
   letter-spacing: 0.35em;
@@ -88,22 +93,37 @@ body {
   position: absolute;
   left: 50%;
   bottom: 2.5%;
-  transform: translateX(-50%);
+  transform: translate(-50%, 130%);
   display: flex;
   align-items: center;
   gap: 16px;
   opacity: 0;
-  transition: opacity 0.4s;
+  /* 底部弹出动画：translateY + 淡入 */
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s;
   pointer-events: auto;
 }
 
 #controls.visible {
+  transform: translate(-50%, 0);
   opacity: 1;
 }
 
 #controls[hidden] {
   display: flex;
   opacity: 0;
+  transform: translate(-50%, 130%);
+}
+
+/* 专注模式：进度条常驻底部（从底部弹出） */
+body.focused #controls {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+body.focused #progress {
+  width: 420px;
 }
 
 #btn-play {
@@ -136,6 +156,73 @@ body {
   font: 400 10px/1 "Segoe UI", system-ui, sans-serif;
   letter-spacing: 0.3em;
   color: rgba(240, 242, 245, 0.45);
+}
+
+/* ---- 歌词占位面板（专注模式，右侧滑入） ---- */
+#lyrics {
+  position: absolute;
+  right: 64px;
+  top: 50%;
+  width: 400px;
+  padding: 30px 34px;
+  transform: translateY(-50%) translateX(48px);
+  opacity: 0;
+  background: rgba(8, 10, 14, 0.34);
+  backdrop-filter: blur(14px);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  transition:
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s;
+  user-select: none;
+}
+
+#lyrics[hidden] {
+  display: block;
+}
+
+body.focused #lyrics {
+  transform: translateY(-50%) translateX(0);
+  opacity: 1;
+}
+
+#lyrics-title {
+  font: 500 18px/1.4 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(240, 242, 245, 0.9);
+}
+
+#lyrics-artist {
+  margin-top: 6px;
+  font: 400 11px/1.5 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: rgba(240, 242, 245, 0.55);
+}
+
+#lyrics-lines {
+  margin-top: 26px;
+}
+
+.lyric-ph {
+  height: 12px;
+  margin: 11px 0;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+}
+
+.lyric-ph:nth-child(1) { width: 88%; }
+.lyric-ph:nth-child(2) { width: 68%; }
+.lyric-ph:nth-child(3) { width: 82%; }
+.lyric-ph:nth-child(4) { width: 58%; }
+.lyric-ph:nth-child(5) { width: 74%; }
+.lyric-ph:nth-child(6) { width: 46%; }
+
+#lyrics-note {
+  margin-top: 22px;
+  font: 400 10px/1.6 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.35em;
+  color: rgba(240, 242, 245, 0.32);
 }
 
 #debug {

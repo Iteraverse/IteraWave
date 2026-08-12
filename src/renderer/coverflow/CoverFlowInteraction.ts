@@ -14,6 +14,11 @@ export class CoverFlowInteraction {
   private dragStartPosition = 0
   private dragStartX = 0
 
+  /** 点击拾取回调（由 Scene 设置） */
+  onClick: ((x: number, y: number) => void) | null = null
+  /** 拖拽开关（专注模式禁用） */
+  dragEnabled = true
+
   constructor(
     private readonly physics: CoverFlowPhysics,
     private readonly config: VisualConfig,
@@ -27,14 +32,19 @@ export class CoverFlowInteraction {
   ): void {
     mouse.callbacks = {
       onDown: (x) => {
+        if (!this.dragEnabled) return
         this.dragStartPosition = this.physics.position
         this.dragStartX = x
       },
       onMove: (x, _y, _dx, _dy, dt) => {
+        if (!this.dragEnabled) return
         const delta = (x - this.dragStartX) / this.config.coverSpacing
         this.physics.dragTo(this.dragStartPosition - delta, dt)
       },
-      onUp: () => this.physics.dragEnd(),
+      onUp: () => {
+        if (this.dragEnabled) this.physics.dragEnd()
+      },
+      onClick: (x, y) => this.onClick?.(x, y),
     }
 
     wheel.callbacks = {
@@ -49,6 +59,7 @@ export class CoverFlowInteraction {
       onPlayPause: () => {},
       onFullscreen: () => {},
       onDebug: () => {},
+      onExit: () => {},
     }
 
     mouse.attach(canvas)

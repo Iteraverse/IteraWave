@@ -41,6 +41,19 @@ export interface VisualConfig {
   /** 封面圆角半径（封面宽度的比例，0 = 直角） */
   coverCornerRadius: number
 
+  /** 专注模式（点击封面进入）：主封面左移 = coverSize × 该值 */
+  focusOffsetX: number
+  /** 专注模式主封面放大倍数 */
+  focusScale: number
+  /** 其他封面后退深度（z 轴，CSS 像素） */
+  focusDepth: number
+  /** 其他封面缩小系数 */
+  focusBackScale: number
+  /** 其他封面变暗/透明系数 */
+  focusBackDim: number
+  /** 专注过渡速度（指数趋近系数，越大越快） */
+  focusTransitionSpeed: number
+
   /** Ambient 背景（§4-§9）：blob 数量 */
   ambientBlobCount: number
   /** blob 半径基准（相对画面宽度，0..1） */
@@ -94,6 +107,14 @@ export const visualConfig: VisualConfig = {
 
   // 封面圆角（圆角矩形 SDF 在 fragment shader 中裁剪）
   coverCornerRadius: 0.04,
+
+  // 专注模式（点击封面进入：放大左移，其他退后，右侧歌词占位 + 底部进度条）
+  focusOffsetX: 0.4,
+  focusScale: 1.32,
+  focusDepth: 340,
+  focusBackScale: 0.7,
+  focusBackDim: 0.55,
+  focusTransitionSpeed: 4.5,
 
   // Ambient 背景（GPU 色彩场，§4-§9/§38/§40）
   ambientBlobCount: 8,
