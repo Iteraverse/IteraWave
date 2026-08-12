@@ -62,13 +62,14 @@ export class AmbientField {
       blobCount: config.ambientBlobCount,
       data: new Float32Array(config.ambientBlobCount * 8),
     }
-    // Golden angle 散布 + 错峰周期（15~60s，§6）
+    // Golden angle 散布 + 错峰周期（6~18s 主周期 + 4~11s 次周期，§6）
+    // 周期收到视觉可感知的范围：15-60s 在屏幕上几乎静止
     const n = config.ambientBlobCount
     for (let i = 0; i < n; i++) {
       const angle = i * 2.399963 + 1.7
       const dist = 0.16 + 0.3 * ((i * 7) % 10) / 10
-      const period = 15 + ((i * 7.3 + 3.1) % 46) // 15~60s
-      const period2 = 9 + ((i * 11.7 + 5.3) % 26) // 第二频率
+      const period = 6 + ((i * 7.3 + 3.1) % 13) // 6~18s
+      const period2 = 4 + ((i * 11.7 + 5.3) % 8) // 4~11s
       this.blobs.push({
         baseX: 0.5 + Math.cos(angle) * dist,
         baseY: 0.5 + Math.sin(angle) * dist * 0.85,
@@ -76,8 +77,8 @@ export class AmbientField {
         phase: i * 1.91,
         s1: (Math.PI * 2) / period * config.ambientBlobSpeed,
         s2: (Math.PI * 2) / period2 * config.ambientBlobSpeed,
-        amp1: 0.035 + ((i * 5) % 4) * 0.012,
-        amp2: 0.02 + ((i * 3) % 5) * 0.008,
+        amp1: 0.07 + ((i * 5) % 4) * 0.02,
+        amp2: 0.04 + ((i * 3) % 5) * 0.012,
         slot: i % PALETTE_KEYS.length,
       })
     }
@@ -122,11 +123,14 @@ export class AmbientField {
       const sc: RGB = [gray + (col[0] - gray) * sat, gray + (col[1] - gray) * sat, gray + (col[2] - gray) * sat]
       const bc: RGB = [sc[0] * bright, sc[1] * bright, sc[2] * bright]
 
+      // 明暗呼吸 + 半径脉动：让背景有“活”的感觉（缓慢、克制）
+      const breathe = 1 + 0.15 * Math.sin(t * 0.9 + b.phase * 2.3)
+      const pulseR = 1 + 0.12 * Math.sin(t * 0.6 + b.phase * 1.7)
       const o = i * 8
       data[o] = x
       data[o + 1] = y
-      data[o + 2] = b.radius
-      data[o + 3] = this.config.ambientIntensity * resp
+      data[o + 2] = b.radius * pulseR
+      data[o + 3] = this.config.ambientIntensity * resp * breathe
       data[o + 4] = bc[0]
       data[o + 5] = bc[1]
       data[o + 6] = bc[2]

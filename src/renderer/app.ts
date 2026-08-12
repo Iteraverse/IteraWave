@@ -20,7 +20,6 @@ interface SmokeResult {
   frames?: number
   litRatio?: number
   centerRatio?: number
-  reflectionRatio?: number
   position?: number
 }
 

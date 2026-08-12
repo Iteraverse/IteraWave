@@ -6,14 +6,12 @@
  * 背景 pass 无混合，直接输出 sRGB 值。
  */
 
-/** 封面 pass：实例化绘制三档 texture_2d_array，每 instance 一个模型矩阵 + 图层 + 亮度/透明度/反射标志 */
+/** 封面 pass：实例化绘制三档 texture_2d_array，每 instance 一个模型矩阵 + 图层 + 亮度/透明度；fragment 圆角裁剪 */
 export const COVER_SHADER = /* wgsl */ `
 struct CoverUniforms {
   proj : mat4x4f,
-  reflectionOpacity : f32,
-  reflectionDarken : f32,
-  reflectionHeight : f32,
-  _pad : f32,
+  cornerRadius : f32,
+  _pad : vec3f,
 };
 @group(0) @binding(0) var<uniform> cu : CoverUniforms;
 @group(0) @binding(1) var coversFull : texture_2d_array<f32>;
@@ -31,7 +29,6 @@ struct VSIn {
   @location(6) layer : u32,
   @location(7) brightness : f32,
   @location(8) opacity : f32,
-  @location(9) isReflection : f32,
 };
 
 struct VSOut {
@@ -39,7 +36,6 @@ struct VSOut {
   @location(0) uv : vec2f,
   @location(1) @interpolate(flat) layer : u32,
   @location(2) mul : vec4f,
-  @location(3) @interpolate(flat) isReflection : f32,
 };
 
 @vertex
@@ -50,7 +46,6 @@ fn vs(in : VSIn) -> VSOut {
   out.uv = in.uv;
   out.layer = in.layer;
   out.mul = vec4f(in.brightness, in.brightness, in.brightness, in.opacity);
-  out.isReflection = in.isReflection;
   return out;
 }
 
@@ -66,24 +61,24 @@ fn sampleCover(uv : vec2f, albumLayer : u32, tier : u32) -> vec4f {
   return select(select(cMed, cThumb, tier == 2u), cFull, tier == 0u);
 }
 
+// 圆角矩形 SDF：uv ∈ [0,1]²，r = 圆角半径（uv 单位）
+fn roundedRectAlpha(uv : vec2f, r : f32) -> f32 {
+  let b = vec2f(0.5 - r);
+  let q = abs(uv - 0.5) - b;
+  let dist = length(max(q, vec2f(0.0))) - r;
+  let aa = max(fwidth(dist), 1e-4);
+  return 1.0 - smoothstep(-aa, aa, dist);
+}
+
 @fragment
 fn fs(in : VSOut) -> @location(0) vec4f {
   let albumLayer = in.layer / 3u;
   var tier = in.layer % 3u;
-  // reflection: sample one tier lower (small texture upscale = natural blur)
-  if (in.isReflection > 0.5) {
-    tier = min(tier + 1u, 2u);
-  }
-  // reflection: map v to the mirrored bottom of the cover (top edge v=1 -> bottom v=1-height)
-  let uv = select(in.uv, vec2f(in.uv.x, 1.0 - in.uv.y * cu.reflectionHeight), in.isReflection > 0.5);
-  let c = sampleCover(uv, albumLayer, tier);
+  let c = sampleCover(in.uv, albumLayer, tier);
   var rgb = c.rgb * in.mul.rgb;
   var alpha = c.a * in.mul.a;
-  if (in.isReflection > 0.5) {
-    // gradient alpha: bright at top edge (touching cover bottom) -> transparent at bottom
-    rgb *= cu.reflectionDarken;
-    alpha *= (1.0 - in.uv.y) * cu.reflectionOpacity;
-  }
+  // 圆角裁剪（抗锯齿），透明处露出 Ambient 背景
+  alpha *= roundedRectAlpha(in.uv, cu.cornerRadius);
   return vec4f(linToSrgb(rgb), alpha);
 }
 `

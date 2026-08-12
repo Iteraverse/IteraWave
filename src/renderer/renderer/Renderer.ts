@@ -6,14 +6,14 @@ import { COVER_SHADER, AMBIENT_SHADER, UPSCALE_SHADER } from './shaders.js'
 
 const NEAR = 0.5
 const FAR = 5000
-/** 实例缓冲上限（同时可见封面 × 2：反射 + 本体；|offset|>7 不绘制） */
-const MAX_INSTANCES = 32
-/** 单个实例数据大小：mat4(64B) + layer(4B) + brightness(4B) + opacity(4B) + isReflection(4B) */
-const INSTANCE_STRIDE = 80
+/** 实例缓冲上限（同时可见封面；|offset|>7 不绘制） */
+const MAX_INSTANCES = 16
+/** 单个实例数据大小：mat4(64B) + layer(4B) + brightness(4B) + opacity(4B) */
+const INSTANCE_STRIDE = 76
 
 /**
  * WebGPU 渲染器（文档 §31/§36）：
- * Ambient 背景 pass（半分辨率 RT，§35）→ Upscale pass（+Vignette）→ 封面/反射 pass。
+ * Ambient 背景 pass（半分辨率 RT，§35）→ Upscale pass（+Vignette）→ 封面 pass（圆角）。
  * 透视投影在 vertex shader 中完成，真实 3D 空间而非 2D transform 假装。
  */
 export class Renderer {
@@ -64,7 +64,7 @@ export class Renderer {
 
     // ---- 资源 ----
     const [coversFull, coversMed, coversThumb] = textures
-    // 反射：采样低一档纹理（小图线性放大 = 天然模糊，替代 mip bias）
+    // 远处封面采样低一档纹理（小图线性放大 = 天然模糊，替代 mip bias）
     const sampler = device.createSampler({
       magFilter: 'linear',
       minFilter: 'linear',
@@ -77,8 +77,8 @@ export class Renderer {
     this.ambientUniform = device.createBuffer({ size: 304, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
     this.upscaleUniform = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
     this.rtSampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' })
-    // proj(mat4) + reflectionOpacity/Darken/Height
-    this.projUniform = device.createBuffer({ size: 80, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+    // proj(mat4) + cornerRadius + pad（vec3 对齐 16 → struct 96B）
+    this.projUniform = device.createBuffer({ size: 96, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
     for (let i = 0; i < 2; i++) {
       this.instanceBuffers.push(
         device.createBuffer({
@@ -166,7 +166,6 @@ export class Renderer {
               { shaderLocation: 6, offset: 64, format: 'uint32' },
               { shaderLocation: 7, offset: 68, format: 'float32' },
               { shaderLocation: 8, offset: 72, format: 'float32' },
-              { shaderLocation: 9, offset: 76, format: 'float32' },
             ],
           },
         ],
@@ -253,32 +252,26 @@ export class Renderer {
     projView[11] = -1
     projView[14] = (FAR * (NEAR - persp)) / (NEAR - FAR)
     projView[15] = persp
-    // 封面 uniform：proj + 反射参数（§45 集中管理）
-    const coverUniform = new Float32Array(20)
+    // 封面 uniform：proj + 圆角半径（§45 集中管理）
+    const coverUniform = new Float32Array(24)
     coverUniform.set(projView)
-    coverUniform[16] = this.config.reflectionOpacity
-    coverUniform[17] = this.config.reflectionDarken
-    coverUniform[18] = this.config.reflectionHeight
-    coverUniform[19] = 0
+    coverUniform[16] = this.config.coverCornerRadius
     this.device.queue.writeBuffer(this.projUniform, 0, coverUniform)
   }
 
-  /** 写入单个实例数据（模型矩阵 T*R*S 列主序 + 图层 + 亮度/透明度 + 反射标志） */
-  private writeInstance(off: number, it: CoverTransform, layer: number, isReflection: boolean): void {
+  /** 写入单个实例数据（模型矩阵 T*R*S 列主序 + 图层 + 亮度/透明度） */
+  private writeInstance(off: number, it: CoverTransform, layer: number): void {
     const f32 = this.instanceF32
     const u32 = this.instanceU32
     const c = Math.cos(it.rotationY)
     const s = Math.sin(it.rotationY)
     const ss = this.config.coverSize * it.scale
-    // 反射：y 方向压缩 reflectionHeight 倍并下移（顶边贴封面底边）；x/z 与本体一致
-    const yScale = isReflection ? ss * this.config.reflectionHeight : ss
-    const yOff = isReflection ? it.y - ss / 2 - (ss * this.config.reflectionHeight) / 2 : it.y
     f32[off + 0] = c * ss
     f32[off + 1] = 0
     f32[off + 2] = s * ss
     f32[off + 3] = 0
     f32[off + 4] = 0
-    f32[off + 5] = yScale
+    f32[off + 5] = ss
     f32[off + 6] = 0
     f32[off + 7] = 0
     f32[off + 8] = -s
@@ -286,32 +279,29 @@ export class Renderer {
     f32[off + 10] = c
     f32[off + 11] = 0
     f32[off + 12] = it.x
-    f32[off + 13] = yOff
+    f32[off + 13] = it.y
     f32[off + 14] = it.z
     f32[off + 15] = 1
     u32[off + 16] = layer
     f32[off + 17] = it.brightness
     f32[off + 18] = it.opacity
-    f32[off + 19] = isReflection ? 1 : 0
   }
 
-  /** 渲染一帧：Ambient 背景（半分辨率 RT）→ Upscale（+Vignette）→ 封面/反射（文档 §36/§35） */
+  /** 渲染一帧：Ambient 背景（半分辨率 RT）→ Upscale（+Vignette）→ 封面流（文档 §36/§35） */
   render(items: readonly CoverTransform[], ambient: AmbientFrame): void {
-    const n = Math.min(items.length, Math.floor(MAX_INSTANCES / 2))
+    const n = Math.min(items.length, MAX_INSTANCES)
 
-    // 填充实例数据：每个封面 2 个实例（反射先、本体后），items 已按远→近排序
+    // 填充实例数据（items 已按远→近排序）
     for (let i = 0; i < n; i++) {
       const it = items[i]
       const tier = AlbumTextureCache.tierForDistance(Math.abs(it.offset))
       const layer = AlbumTextureCache.layerFor(it.albumIndex, tier)
-      const base = i * 2 * (INSTANCE_STRIDE / 4)
-      this.writeInstance(base, it, layer, true)
-      this.writeInstance(base + INSTANCE_STRIDE / 4, it, layer, false)
+      this.writeInstance(i * (INSTANCE_STRIDE / 4), it, layer)
     }
 
     const instanceBuffer = this.instanceBuffers[this.instanceRing]
     this.instanceRing ^= 1
-    this.device.queue.writeBuffer(instanceBuffer, 0, this.instanceData, 0, n * 2 * INSTANCE_STRIDE)
+    this.device.queue.writeBuffer(instanceBuffer, 0, this.instanceData, 0, n * INSTANCE_STRIDE)
 
     // Ambient blob uniform（§8：位置/半径/强度/颜色每帧由 CPU 更新）
     const au = new Float32Array(76)
@@ -348,7 +338,7 @@ export class Renderer {
       }
     }
 
-    // Pass 3: 封面流 + 反射
+    // Pass 3: 封面流
     if (n > 0) {
       const pass = encoder.beginRenderPass({
         colorAttachments: [{ view, loadOp: 'load', storeOp: 'store' }],
@@ -358,7 +348,7 @@ export class Renderer {
       pass.setVertexBuffer(0, this.quadVB)
       pass.setVertexBuffer(1, instanceBuffer)
       pass.setIndexBuffer(this.indexBuffer, 'uint16')
-      pass.drawIndexed(6, n * 2)
+      pass.drawIndexed(6, n)
       pass.end()
     }
 

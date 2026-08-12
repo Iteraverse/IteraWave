@@ -1,8 +1,8 @@
-# Album Flow
+﻿# Album Flow
 
 Windows 沉浸式 Cover Flow 音乐浏览界面 — **Phase 1-6 全部完成**（Electron + TypeScript + WebGPU）。
 
-> GPU 加速的 3D Cover Flow：真实透视投影、空间深度、惯性拖拽、弹簧吸附、封面镜面反射，
+> GPU 加速的 3D Cover Flow：真实透视投影、空间深度、惯性拖拽、弹簧吸附、圆角封面，
 > 专辑主色驱动的动态 Ambient 色彩场（GPU shader）、调色过渡、暗角调色、元数据与调试面板。
 > 内置 24 张程序生成的演示专辑，开箱即用。
 
@@ -70,7 +70,7 @@ src/renderer/
 └── ui/                       AlbumInfo（§27）/ PlaybackControls / DebugPanel（§46）
 ```
 
-已完成：Phase 1（Cover Flow + 交互 + 弹簧）、Phase 2（反射 §16 + 纹理分级 §32/§34）、
+已完成：Phase 1（Cover Flow + 交互 + 弹簧）、Phase 2（纹理分级 §32/§34，反射已移除）、
 Phase 3（AlbumColorAnalyzer §2/§3）、Phase 4（GPU Ambient Field §4-§9/§35）、
 Phase 5（Palette 过渡 §10/§39 + 速度响应 §40 + Vignette/调色 §8/§9）、
 Phase 6（元数据 §27 + 播放/全屏 §29 + 调试面板 §46）。

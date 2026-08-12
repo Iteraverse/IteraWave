@@ -18,7 +18,7 @@ interface SmokeResult {
   frames?: number
   litRatio?: number
   centerRatio?: number
-  reflectionRatio?: number
+  cornerCheck?: boolean
 }
 
 function createWindow(): void {
@@ -106,38 +106,6 @@ function createWindow(): void {
               if (segStart >= 0) segments.push([segStart, w - 1, w - segStart])
               console.log('[SMOKE] row segments [x0,x1,width]:', JSON.stringify(segments))
 
-              // 反射验证：中心封面正下方应比更下方的纯背景亮（位置相对窗口中心自适应）
-              {
-                const cx0 = Math.floor(w / 2) - 240
-                const cx1 = Math.floor(w / 2) + 240
-                const refY0 = Math.floor(h / 2) + 300
-                const refY1 = Math.floor(h / 2) + 520
-                const bgY0 = Math.min(h - 40, refY1 + 80)
-                const bgY1 = Math.min(h - 10, bgY0 + 30)
-                let refSum = 0
-                let refN = 0
-                let bgSum = 0
-                let bgN = 0
-                for (let y = refY0; y < Math.min(h, refY1); y += 4) {
-                  for (let x = cx0; x < cx1; x += 4) {
-                    const i = (y * w + x) * 4
-                    refSum += Math.max(bmp[i], bmp[i + 1], bmp[i + 2])
-                    refN++
-                  }
-                }
-                for (let y = bgY0; y < bgY1; y += 4) {
-                  for (let x = cx0; x < cx1; x += 4) {
-                    const i = (y * w + x) * 4
-                    bgSum += Math.max(bmp[i], bmp[i + 1], bmp[i + 2])
-                    bgN++
-                  }
-                }
-                const refAvg = refSum / Math.max(1, refN)
-                const bgAvg = bgSum / Math.max(1, bgN)
-                r.reflectionRatio = Number((refAvg / Math.max(1, bgAvg)).toFixed(3))
-                console.log(`[SMOKE] reflection avg=${refAvg.toFixed(1)} vs bg=${bgAvg.toFixed(1)} (ratio ${r.reflectionRatio})`)
-              }
-
               // 中心行亮度剖面（每 120 设备像素一个采样点，取最大通道），定位缺失的封面
               const profile: number[] = []
               for (let x = 0; x < w; x += 120) {
@@ -145,13 +113,38 @@ function createWindow(): void {
                 profile.push(Math.max(bmp[i], bmp[i + 1], bmp[i + 2]))
               }
               console.log('[SMOKE] row profile (max channel, every 120px): ' + profile.join(','))
+
+              // 圆角验证：中心封面左上角（圆角裁剪区）应明显暗于封面中心
+              // 中心封面投影 ≈ 窗口宽 0.2375、高 0.422；角点向内偏移 0.012 比例
+              {
+                const ccx = Math.floor(w / 2)
+                const ccy = Math.floor(h / 2)
+                const insetX = Math.max(2, Math.floor(w * 0.012))
+                const insetY = Math.max(2, Math.floor(h * 0.012))
+                const cornerX = Math.floor(ccx - w * 0.2375 / 2 + insetX)
+                const cornerY = Math.floor(ccy - h * 0.422 / 2 + insetY)
+                const pix = (x: number, y: number): number => {
+                  const i = (Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))) * 4
+                  return Math.max(bmp[i], bmp[i + 1], bmp[i + 2])
+                }
+                // 封面中心区域最亮值（图片中心可能偏暗，取 ±80px 区域 max）
+                let centerL = 0
+                for (let dy = -80; dy <= 80; dy += 16) {
+                  for (let dx = -80; dx <= 80; dx += 16) {
+                    centerL = Math.max(centerL, pix(ccx + dx, ccy + dy))
+                  }
+                }
+                const cornerL = pix(cornerX, cornerY)
+                console.log(`[SMOKE] corner check: center=${centerL} corner=${cornerL}`)
+                r.cornerCheck = centerL > 80 && cornerL < centerL * 0.55
+              }
             } catch {
               r.litRatio = -1
               r.centerRatio = -1
             }
             console.log('[SMOKE] ' + JSON.stringify(r))
-            // 背景点亮后 centerRatio 无区分度，改用 litRatio + reflectionRatio 判定
-            app.exit(r.ok && (r.litRatio ?? 0) > 0.1 && (r.reflectionRatio ?? 0) > 1.05 ? 0 : 1)
+            // 画面有内容 + 中央封面区域渲染到位 + 圆角裁剪生效
+            app.exit(r.ok && (r.litRatio ?? 0) > 0.1 && (r.centerRatio ?? 0) > 0.05 && r.cornerCheck !== false ? 0 : 1)
             return
           }
         } catch (e) {

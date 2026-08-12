@@ -38,12 +38,8 @@ export interface VisualConfig {
   /** 远处封面亮度衰减强度（brightness = 1 - smoothstep(0.2,3,d) * 该值） */
   brightnessFalloff: number
 
-  /** 封面反射（§16）：高度 = 封面高度 × 该值；镜像 + 渐变 + 变暗（模糊由低一档纹理采样实现） */
-  reflectionHeight: number
-  /** 反射整体强度（组合 opacity × darken ≈ 0.28，接近文档 0.12~0.25 上限） */
-  reflectionOpacity: number
-  /** 反射颜色变暗系数 */
-  reflectionDarken: number
+  /** 封面圆角半径（封面宽度的比例，0 = 直角） */
+  coverCornerRadius: number
 
   /** Ambient 背景（§4-§9）：blob 数量 */
   ambientBlobCount: number
@@ -94,23 +90,23 @@ export const visualConfig: VisualConfig = {
   opacityFalloff: 0.85,
   brightnessFalloff: 0.55,
 
-  // 封面反射（黑色镜面地面感，保持克制；模糊由低一档纹理采样实现）
-  reflectionHeight: 0.45,
-  reflectionOpacity: 0.35,
-  reflectionDarken: 0.8,
+  // 封面圆角（圆角矩形 SDF 在 fragment shader 中裁剪）
+  coverCornerRadius: 0.07,
 
   // Ambient 背景（GPU 色彩场，§4-§9/§38/§40）
   ambientBlobCount: 8,
-  ambientBlobRadius: 0.34,
-  ambientBlobSpeed: 1.0,
+  // 半径调小让色块更分明（而非糊成一片渐变）
+  ambientBlobRadius: 0.2,
+  // 运动加快：周期从 15-60s 收到 6-18s（AmbientField 内），这里系数 1.6
+  ambientBlobSpeed: 1.6,
   // 背景亮度 ≈ 封面 × 0.25~0.45（§9）：强度与黑纱共同压低
-  ambientIntensity: 0.6,
-  ambientSaturation: 0.45,
-  ambientBrightness: 0.3,
+  ambientIntensity: 0.95,
+  ambientSaturation: 0.58,
+  ambientBrightness: 0.38,
   paletteTransitionDuration: 1.1,
   ambientVelocityResponse: 0.05,
-  vignetteStrength: 0.45,
-  backgroundDarkness: 0.7,
+  vignetteStrength: 0.4,
+  backgroundDarkness: 0.55,
 
   coverCount: 24,
 }
