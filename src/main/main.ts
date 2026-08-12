@@ -19,6 +19,7 @@ interface SmokeResult {
   litRatio?: number
   centerRatio?: number
   cornerCheck?: boolean
+  cornersMin?: number
 }
 
 function createWindow(): void {
@@ -137,6 +138,25 @@ function createWindow(): void {
                 const cornerL = pix(cornerX, cornerY)
                 console.log(`[SMOKE] corner check: center=${centerL} corner=${cornerL}`)
                 r.cornerCheck = centerL > 80 && cornerL < centerL * 0.55
+
+                // 屏幕四角亮度采样（验证 vignette/黑纱不会让角落死黑）
+                const quad = (x0: number, y0: number): number => {
+                  let sum = 0
+                  let n = 0
+                  for (let y = y0; y < Math.min(h, y0 + 48); y += 4) {
+                    for (let x = x0; x < Math.min(w, x0 + 48); x += 4) {
+                      sum += pix(x, y)
+                      n++
+                    }
+                  }
+                  return Math.round(sum / Math.max(1, n))
+                }
+                const tl = quad(8, 8)
+                const tr = quad(w - 56, 8)
+                const bl = quad(8, h - 56)
+                const br = quad(w - 56, h - 56)
+                console.log(`[SMOKE] corners TL=${tl} TR=${tr} BL=${bl} BR=${br}`)
+                r.cornersMin = Math.min(tl, tr, bl, br)
               }
             } catch {
               r.litRatio = -1

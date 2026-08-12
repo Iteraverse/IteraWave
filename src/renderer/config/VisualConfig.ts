@@ -61,6 +61,8 @@ export interface VisualConfig {
   vignetteStrength: number
   /** 背景黑纱（整体压暗，保证文字/封面可读，§38） */
   backgroundDarkness: number
+  /** 地板底色系数：palette average × 该值 作全局底色（0 = 无，角落可能全黑） */
+  ambientFloor: number
 
   /** 演示专辑数量 */
   coverCount: number
@@ -91,7 +93,7 @@ export const visualConfig: VisualConfig = {
   brightnessFalloff: 0.55,
 
   // 封面圆角（圆角矩形 SDF 在 fragment shader 中裁剪）
-  coverCornerRadius: 0.07,
+  coverCornerRadius: 0.04,
 
   // Ambient 背景（GPU 色彩场，§4-§9/§38/§40）
   ambientBlobCount: 8,
@@ -99,14 +101,16 @@ export const visualConfig: VisualConfig = {
   ambientBlobRadius: 0.2,
   // 运动加快：周期从 15-60s 收到 6-18s（AmbientField 内），这里系数 1.6
   ambientBlobSpeed: 1.6,
-  // 背景亮度 ≈ 封面 × 0.25~0.45（§9）：强度与黑纱共同压低
-  ambientIntensity: 0.95,
-  ambientSaturation: 0.58,
-  ambientBrightness: 0.38,
+  // 背景亮度 ≈ 封面 × 0.25~0.45（§9）：强度与黑纱共同压低，但要保证不闷
+  ambientIntensity: 1.1,
+  ambientSaturation: 0.65,
+  ambientBrightness: 0.46,
   paletteTransitionDuration: 1.1,
   ambientVelocityResponse: 0.05,
-  vignetteStrength: 0.4,
-  backgroundDarkness: 0.55,
+  // 暗角克制：0.4 会让四角明显发黑，降到 0.15 只保留轻微聚焦感
+  vignetteStrength: 0.15,
+  backgroundDarkness: 0.45,
+  ambientFloor: 0.35,
 
   coverCount: 24,
 }

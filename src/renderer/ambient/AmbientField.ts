@@ -27,6 +27,8 @@ interface BlobState {
 export interface AmbientFrame {
   blobCount: number
   data: Float32Array
+  /** 全局地板底色（palette average 的暗版）：保证角落/间隙不会全黑 */
+  baseColor: RGB
 }
 
 const PALETTE_KEYS = ['dominant', 'secondary', 'accent', 'dark', 'light', 'average'] as const
@@ -61,13 +63,15 @@ export class AmbientField {
     this.frame = {
       blobCount: config.ambientBlobCount,
       data: new Float32Array(config.ambientBlobCount * 8),
+      baseColor: [0, 0, 0],
     }
     // Golden angle 散布 + 错峰周期（6~18s 主周期 + 4~11s 次周期，§6）
     // 周期收到视觉可感知的范围：15-60s 在屏幕上几乎静止
     const n = config.ambientBlobCount
     for (let i = 0; i < n; i++) {
       const angle = i * 2.399963 + 1.7
-      const dist = 0.16 + 0.3 * ((i * 7) % 10) / 10
+      // 散布范围扩大到 0.18~0.52：让角落也常有色块经过，避免四角常年发黑
+      const dist = 0.18 + 0.34 * ((i * 7) % 10) / 10
       const period = 6 + ((i * 7.3 + 3.1) % 13) // 6~18s
       const period2 = 4 + ((i * 11.7 + 5.3) % 8) // 4~11s
       this.blobs.push({
@@ -122,7 +126,6 @@ export class AmbientField {
       const gray = (col[0] + col[1] + col[2]) / 3
       const sc: RGB = [gray + (col[0] - gray) * sat, gray + (col[1] - gray) * sat, gray + (col[2] - gray) * sat]
       const bc: RGB = [sc[0] * bright, sc[1] * bright, sc[2] * bright]
-
       // 明暗呼吸 + 半径脉动：让背景有“活”的感觉（缓慢、克制）
       const breathe = 1 + 0.15 * Math.sin(t * 0.9 + b.phase * 2.3)
       const pulseR = 1 + 0.12 * Math.sin(t * 0.6 + b.phase * 1.7)
@@ -136,6 +139,11 @@ export class AmbientField {
       data[o + 6] = bc[2]
       data[o + 7] = 0
     }
+
+    // 地板底色：palette average 的暗版（× floor 系数），保证角落/间隙不会全黑
+    const avg = paletteColor(to, 5)
+    const floor = this.config.ambientFloor
+    this.frame.baseColor = [avg[0] * bright * floor, avg[1] * bright * floor, avg[2] * bright * floor]
     return this.frame
   }
 }

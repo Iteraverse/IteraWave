@@ -308,6 +308,10 @@ export class Renderer {
     // blobCount 是 u32：必须用整数位模式写入（f32 写 8.0 会变成 ~1e9 导致 shader 循环爆炸）
     new Uint32Array(au.buffer)[0] = ambient.blobCount
     au.set(ambient.data.subarray(0, ambient.blobCount * 8), 4)
+    // 地板底色（darkness 后的 vec3 字段，offset 280B → float[70..72]）
+    au[70] = ambient.baseColor[0]
+    au[71] = ambient.baseColor[1]
+    au[72] = ambient.baseColor[2]
     au[68] = this.config.backgroundDarkness
     this.device.queue.writeBuffer(this.ambientUniform, 0, au)
 

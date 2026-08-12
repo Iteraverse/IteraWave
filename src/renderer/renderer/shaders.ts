@@ -133,7 +133,8 @@ struct AmbientUniforms {
   _p2 : u32,
   blobs : array<vec4f, 16>,
   darkness : f32,
-  _p3 : vec3f,
+  _pad : f32,
+  base : vec3f, // 地板底色（palette average 暗版）
 };
 @group(0) @binding(0) var<uniform> au : AmbientUniforms;
 
@@ -161,6 +162,8 @@ fn fs(in : VSOut) -> @location(0) vec4f {
     let influence = exp(-d * d / (2.0 * b.z * b.z));
     col += c.rgb * influence * b.w;
   }
+  // 地板底色：palette average 的暗版，保证角落/间隙不会全黑
+  col += au.base;
   col = col / (1.0 + col);           // Reinhard tone map（§8）
   col *= (1.0 - au.darkness);        // black veil（§9/§38）
   return vec4f(col, 1.0);
