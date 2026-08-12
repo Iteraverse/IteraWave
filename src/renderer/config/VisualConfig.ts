@@ -41,8 +41,8 @@ export interface VisualConfig {
   /** 封面圆角半径（封面宽度的比例，0 = 直角） */
   coverCornerRadius: number
 
-  /** 专注模式（点击封面进入）：主封面左移 = coverSize × 该值 */
-  focusOffsetX: number
+  /** 专注模式（点击封面进入）：主封面中心 = 左半屏中心（窗口宽 × 该值） */
+  focusCenterRatio: number
   /** 专注模式主封面放大倍数 */
   focusScale: number
   /** 其他封面后退深度（z 轴，CSS 像素） */
@@ -114,8 +114,8 @@ export const visualConfig: VisualConfig = {
   // 封面圆角（圆角矩形 SDF 在 fragment shader 中裁剪）
   coverCornerRadius: 0.04,
 
-  // 专注模式（点击封面进入：放大左移，其他后退淡出 + 高斯模糊，右侧歌词文字 + 底部进度条）
-  focusOffsetX: 0.6,
+  // 专注模式（点击封面进入：主封面对齐左半屏中心，歌词对齐右半屏中心）
+  focusCenterRatio: 0.25,
   focusScale: 1.32,
   focusDepth: 320,
   focusBackScale: 0.9,

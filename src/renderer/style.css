@@ -159,13 +159,13 @@ body.focused #progress {
   color: rgba(240, 242, 245, 0.45);
 }
 
-/* ---- 歌词文字面板（专注模式，右侧滑入；纯文字无背景） ---- */
+/* ---- 歌词文字面板（专注模式：对齐右半屏中心；纯文字无背景） ---- */
 #lyrics {
   position: absolute;
-  right: 72px;
+  left: 75%;
   top: 50%;
   width: 400px;
-  transform: translateY(-50%) translateX(48px);
+  transform: translate(-50%, -50%) translateX(48px);
   opacity: 0;
   transition:
     transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
@@ -179,7 +179,7 @@ body.focused #progress {
 }
 
 body.focused #lyrics {
-  transform: translateY(-50%) translateX(0);
+  transform: translate(-50%, -50%) translateX(0);
   opacity: 1;
 }
 

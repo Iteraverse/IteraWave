@@ -204,9 +204,11 @@ function createWindow(): void {
                     backOpacity: number
                   } | null
                   console.log(`[SMOKE] focus layout: ${JSON.stringify(info)}`)
+                  // 主封面中心 = 左半屏中心（-innerWidth/4）
+                  const expectX = (await win.webContents.executeJavaScript('window.innerWidth')) / 4
                   r.focusLayout =
                     info !== null &&
-                    Math.abs(info.x + 228) < 40 &&
+                    Math.abs(info.x + expectX) < 40 &&
                     Math.abs(info.scale - 1.32) < 0.05 &&
                     Math.abs(info.z) < 40 &&
                     Math.abs(info.rot) < 0.05 &&

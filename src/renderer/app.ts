@@ -154,6 +154,7 @@ async function run(): Promise<SmokeResult> {
 
   const onResize = (): void => {
     renderer.setSize(canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio)
+    scene.windowWidth = canvas.clientWidth
   }
   window.addEventListener('resize', onResize)
   onResize()

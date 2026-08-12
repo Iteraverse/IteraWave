@@ -40,7 +40,7 @@ export class CoverFlowLayout {
 
   constructor(private readonly config: VisualConfig) {}
 
-  compute(position: number, count: number, focus: FocusState | null = null): CoverTransform[] {
+  compute(position: number, count: number, focus: FocusState | null = null, windowWidth = 1600): CoverTransform[] {
     const cfg = this.config
     const center = Math.round(position)
     const start = Math.max(0, center - CoverFlowLayout.VISIBLE_RADIUS)
@@ -78,7 +78,7 @@ export class CoverFlowLayout {
         const delay = Math.min(Math.abs(offset), 4) * 0.09
         const tt = clamp01((focus.t - delay) / Math.max(0.02, 1 - delay))
         const k = easeInOutCubic(tt)
-        t = lerpTransform(normal, this.focusTransform(normal, focus.index), k)
+        t = lerpTransform(normal, this.focusTransform(normal, focus.index, windowWidth), k)
       }
       out.push(t)
     }
@@ -91,9 +91,10 @@ export class CoverFlowLayout {
    * 专注模式目标布局：主封面放大左移正对；
    * 其他封面向后移动 + 淡出 + 高斯模糊（不改变横向位置，像退入背景）。
    */
-  private focusTransform(n: CoverTransform, focusIndex: number): CoverTransform {
+  private focusTransform(n: CoverTransform, focusIndex: number, windowWidth: number): CoverTransform {
     const cfg = this.config
-    const focusX = -cfg.focusOffsetX * cfg.coverSize
+    // 主封面中心 = 左半屏中心
+    const focusX = -windowWidth * cfg.focusCenterRatio
     if (n.albumIndex === focusIndex) {
       return {
         ...n,

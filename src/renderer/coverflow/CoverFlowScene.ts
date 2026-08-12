@@ -24,6 +24,9 @@ export class CoverFlowScene {
   /** 专注模式变化回调（index 为 null = 退出） */
   onFocusChange: ((index: number | null) => void) | null = null
 
+  /** 窗口宽度（CSS 像素），专注模式主封面按左半屏中心对齐（resize 时更新） */
+  windowWidth = window.innerWidth
+
   private readonly layout: CoverFlowLayout
   private readonly interaction: CoverFlowInteraction
   private focused = false
@@ -113,7 +116,7 @@ export class CoverFlowScene {
     this.focusT += (this.focusTarget - this.focusT) * Math.min(1, dt * this.config.focusTransitionSpeed)
     if (!this.focused && this.focusT < 0.01) this.focusIndex = null
     const focus = this.focusIndex !== null ? { index: this.focusIndex, t: this.focusT } : null
-    this.items = this.layout.compute(this.physics.position, this.physics.max + 1, focus)
+    this.items = this.layout.compute(this.physics.position, this.physics.max + 1, focus, this.windowWidth)
   }
 
   get position(): number {
