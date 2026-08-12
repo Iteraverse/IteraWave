@@ -47,7 +47,9 @@ export interface VisualConfig {
   focusScale: number
   /** 其他封面后退深度（z 轴，CSS 像素） */
   focusDepth: number
-  /** 其他封面缩小系数 */
+  /** 其他封面收拢到主封面背后的横向展开 = coverSize × 该值（每级 offset） */
+  focusGather: number
+  /** 收拢后封面尺寸 = focusScale × 该值 */
   focusBackScale: number
   /** 其他封面变暗/透明系数 */
   focusBackDim: number
@@ -108,13 +110,14 @@ export const visualConfig: VisualConfig = {
   // 封面圆角（圆角矩形 SDF 在 fragment shader 中裁剪）
   coverCornerRadius: 0.04,
 
-  // 专注模式（点击封面进入：放大左移，其他退后，右侧歌词占位 + 底部进度条）
-  focusOffsetX: 0.4,
+  // 专注模式（点击封面进入：放大左移，其他收拢到背后，右侧歌词文字 + 底部进度条）
+  focusOffsetX: 0.6,
   focusScale: 1.32,
-  focusDepth: 340,
-  focusBackScale: 0.7,
-  focusBackDim: 0.55,
-  focusTransitionSpeed: 4.5,
+  focusDepth: 300,
+  focusGather: 0.22,
+  focusBackScale: 0.5,
+  focusBackDim: 0.45,
+  focusTransitionSpeed: 3.8,
 
   // Ambient 背景（GPU 色彩场，§4-§9/§38/§40）
   ambientBlobCount: 8,

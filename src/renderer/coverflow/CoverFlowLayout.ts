@@ -71,7 +71,10 @@ export class CoverFlowLayout {
       }
       let t = normal
       if (focus && focus.t > 0.002) {
-        const k = easeInOutCubic(focus.t)
+        // 错峰过渡：近的封面先动、远的跟进（波浪收拢/展开，避免所有封面同时开始同时结束的生硬感）
+        const delay = Math.min(Math.abs(offset), 4) * 0.09
+        const tt = clamp01((focus.t - delay) / Math.max(0.02, 1 - delay))
+        const k = easeInOutCubic(tt)
         t = lerpTransform(normal, this.focusTransform(normal, focus.index), k)
       }
       out.push(t)
@@ -81,13 +84,18 @@ export class CoverFlowLayout {
     return out
   }
 
-  /** 专注模式目标布局：主封面放大左移正对；其他封面退后缩小变暗 */
+  /**
+   * 专注模式目标布局：主封面放大左移正对；
+   * 其他封面收拢到主封面背后——x 靠向主封面（带方向偏移形成叠层）、z 分层加深、
+   * 尺寸按 focusBackScale 缩小、明暗递减。
+   */
   private focusTransform(n: CoverTransform, focusIndex: number): CoverTransform {
     const cfg = this.config
+    const focusX = -cfg.focusOffsetX * cfg.coverSize
     if (n.albumIndex === focusIndex) {
       return {
         ...n,
-        x: -cfg.focusOffsetX * cfg.coverSize,
+        x: focusX,
         y: 0,
         z: 0,
         rotationY: 0,
@@ -96,10 +104,15 @@ export class CoverFlowLayout {
         opacity: 1,
       }
     }
+    const d = Math.max(1, Math.abs(n.offset))
+    const dir = Math.sign(n.offset) || 1
     return {
       ...n,
-      z: n.z - cfg.focusDepth,
-      scale: n.scale * cfg.focusBackScale,
+      x: focusX + dir * Math.min(d, 4) * cfg.focusGather * cfg.coverSize,
+      y: 0,
+      z: -cfg.focusDepth - Math.min(d, 4) * 45,
+      rotationY: 0,
+      scale: cfg.focusScale * cfg.focusBackScale * (1 - Math.min(d, 4) * 0.04),
       brightness: n.brightness * cfg.focusBackDim,
       opacity: n.opacity * cfg.focusBackDim,
     }

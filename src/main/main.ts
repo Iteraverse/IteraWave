@@ -194,7 +194,7 @@ function createWindow(): void {
                   console.log(`[SMOKE] focus layout: ${JSON.stringify(info)}`)
                   r.focusLayout =
                     info !== null &&
-                    Math.abs(info.x + 152) < 40 &&
+                    Math.abs(info.x + 228) < 40 &&
                     Math.abs(info.scale - 1.32) < 0.05 &&
                     Math.abs(info.z) < 40 &&
                     Math.abs(info.rot) < 0.05

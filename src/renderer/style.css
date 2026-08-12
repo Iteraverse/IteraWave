@@ -1,4 +1,4 @@
-html,
+﻿html,
 body {
   margin: 0;
   padding: 0;
@@ -6,6 +6,7 @@ body {
   height: 100%;
   overflow: hidden;
   background: #0a0b0e;
+  font-family: "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI", sans-serif;
 }
 
 #viewport {
@@ -67,7 +68,7 @@ body.focused #metadata {
 }
 
 #meta-title {
-  font: 500 20px/1.3 "Segoe UI", system-ui, sans-serif;
+  font: 500 20px/1.3 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
   letter-spacing: 0.35em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -75,7 +76,7 @@ body.focused #metadata {
 
 #meta-artist {
   margin-top: 8px;
-  font: 400 12px/1.5 "Segoe UI", system-ui, sans-serif;
+  font: 400 12px/1.5 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
   letter-spacing: 0.45em;
   text-transform: uppercase;
   opacity: 0.7;
@@ -84,7 +85,7 @@ body.focused #metadata {
 
 #meta-year {
   margin-top: 5px;
-  font: 400 11px/1.5 "Segoe UI", system-ui, sans-serif;
+  font: 400 11px/1.5 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
   letter-spacing: 0.4em;
   opacity: 0.5;
 }
@@ -153,27 +154,24 @@ body.focused #progress {
 
 #play-state {
   min-width: 72px;
-  font: 400 10px/1 "Segoe UI", system-ui, sans-serif;
+  font: 400 10px/1 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
   letter-spacing: 0.3em;
   color: rgba(240, 242, 245, 0.45);
 }
 
-/* ---- 歌词占位面板（专注模式，右侧滑入） ---- */
+/* ---- 歌词文字面板（专注模式，右侧滑入；纯文字无背景） ---- */
 #lyrics {
   position: absolute;
-  right: 64px;
+  right: 72px;
   top: 50%;
   width: 400px;
-  padding: 30px 34px;
   transform: translateY(-50%) translateX(48px);
   opacity: 0;
-  background: rgba(8, 10, 14, 0.34);
-  backdrop-filter: blur(14px);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
   transition:
     transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.45s;
   user-select: none;
+  pointer-events: none;
 }
 
 #lyrics[hidden] {
@@ -186,43 +184,38 @@ body.focused #lyrics {
 }
 
 #lyrics-title {
-  font: 500 18px/1.4 "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: rgba(240, 242, 245, 0.9);
+  font: 500 24px/1.5 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  letter-spacing: 0.08em;
+  color: rgba(250, 251, 253, 0.95);
 }
 
 #lyrics-artist {
-  margin-top: 6px;
-  font: 400 11px/1.5 "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.45em;
+  margin-top: 4px;
+  font: 400 13px/1.6 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   color: rgba(240, 242, 245, 0.55);
 }
 
 #lyrics-lines {
-  margin-top: 26px;
+  margin-top: 30px;
 }
 
-.lyric-ph {
-  height: 12px;
-  margin: 11px 0;
-  border-radius: 6px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+.lyric-line {
+  margin: 14px 0;
+  font: 400 15px/1.7 "Noto Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  letter-spacing: 0.06em;
+  color: rgba(240, 242, 245, 0.82);
 }
 
-.lyric-ph:nth-child(1) { width: 88%; }
-.lyric-ph:nth-child(2) { width: 68%; }
-.lyric-ph:nth-child(3) { width: 82%; }
-.lyric-ph:nth-child(4) { width: 58%; }
-.lyric-ph:nth-child(5) { width: 74%; }
-.lyric-ph:nth-child(6) { width: 46%; }
+.lyric-line.muted {
+  color: rgba(240, 242, 245, 0.45);
+}
 
-#lyrics-note {
-  margin-top: 22px;
-  font: 400 10px/1.6 "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.35em;
-  color: rgba(240, 242, 245, 0.32);
+.lyric-line.small {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: rgba(240, 242, 245, 0.3);
 }
 
 #debug {
